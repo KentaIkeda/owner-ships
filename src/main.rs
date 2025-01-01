@@ -3,30 +3,12 @@ fn process_string(s: &String) {
 } // sのメモリはここで解放される
 
 fn main() {
-    // stack memory, heap memory
-    // コンパイル時に長さが分かっているものはスタックメモリ
-    // 逆に分からない、変更されるであろうものはヒープメモリへと格納され
-    // そのメモリのポインタ（参照）が返される
-    
-    // 関数が呼び出されると、スタックには
-    // 引数として渡した値
-    // 関数内で定義されている変数
-    // ヒープへのポインタ
-    // が積まれ、関数の処理が終わると、スタックから取り除かれる
-    let x = &String::from("Hello Rust");
-    process_string(x); // ここで所有権が移動しprocess_string()が終了した時に自動的にメモリから解放される
+    let x = String::from("Hello Rust");
+    process_string(&x); // ここで所有権が移動しprocess_string()が終了した時に自動的にメモリから解放される
 
     // ここでxは使えない
-    println!("{}", x); // => ??
+    // println!("{}", x); // => ??
     // 現在は参照を渡しているので所有権は移っていない
-
-    // Rustの各値は、所有者と呼ばれる変数と滞欧している
-    // いかなる時も所有者は一つである
-    // 所有者がスコープから外れたら、値は破棄される
-    
-    // ヒープに割り当てられる型には、String以外にも、
-    // 自身で作成した型や、ライブラリによって提供される型も含まれる
-    // 文字列リテラルとString型は別物だということに注意
 
     // 文字列リテラルは不変である
     let _str = "Hello world"; // これは文字列リテラルを束縛しているので不変
@@ -38,15 +20,6 @@ fn main() {
     // このString::fromから生成された文字列を変更することができます。
     string_type.push_str(": ほらね、コンパイルエラーが発生せず、無事に文字列を付け加えることができたでしょう？");
     // println!("string_type is {}", string_type);
-    // 文字列リテラルの場合、中身はコンパイル時に判明しているので、テキストは最終的なバイナリファイルに直接ハードコードされる
-    // つまりは、効率的になる
-    // しかし、ユーザーからの入力を待つ値は、コンパイル時にどれくらいメモリを確保していいか分からないため、ヒープメモリに格納される。
-
-    // メモリは実行時にOSに要求される
-    // String型を使用し終わったら、OSにこのメモリを返還する方法が必要
-
-    // このプログラマー個人が、不必要になったメモリをOSに変換することを解放と言う。
-    // Rustの場合、プログラマー個人がメモリの開放を命令する必要はなく、スコープを抜けるとRustはメモリを自動的に解放してくれます
 
     { // 新しくスコープを作成
         // 変数sはここから有効になる。この時点でsの所有権は新しく作成されたスコープにある
@@ -65,26 +38,68 @@ fn main() {
         // 果たしてこれはコピーされる？
         let _s2 = s1; // されない
         // ここでs1がs2にコピーされたことで、s1が保持していた所有権がs2に移った
-
-        // String型は、pointer, length, capacityの3つの要素を保持している
-        // これらのデータはスタックに保持される
-
-        // 先程のs1をs2にコピーするということは、pointer, length, capacityの3つの要素をコピーしているということ
-        // pointerが指し示している、実際のデータがコピーされているわけではありません
-        // println!("{}", s1);
-        // ただし、cloneメソッドを使用することで、完全にコピーされます
-        // 整数の様に、コンパイル時にサイズが分かっている方は、ヒープではなくスタックに保持されるので、所有権の移動は行われない
-        // 基本的にスカラー値はスタックに保持される物だと考える
-
-        // 関数の引数に値を渡すと、それは変数に代入するように、所有権がその関数へと移動します        
     }
-    // 関数の中で発生した所有権をリターンすると、リターン後に代入された関数スコープに所有権が移動する
-    // let mut s = String::from("borrow hello");
-    // let s1 = &mut s;
-    // let s2 = &mut s;
-    // println!("{}, {}", s1 ,s2);
+    {
+        // 参照と借用について
+        // let s1 = String::from("hello");
+        // let len = calculate_length(&s1);
 
-    let str = String::from("Hello Rust");
-    let str = str.len();
-    println!("{}", str);
+        // println!("The length of '{}' is {}.", s1, len);
+    }
+    {
+
+        // 借用したデータの変更
+        let mut s1 = String::from("Hello Rust");
+        let mut s2 = String::from("Hello React");
+        change_string(&mut s1, &mut s2);
+        println!("{}, {}", s1, s2);
+        // let mut s = String::from("hello");
+
+        // ミュータブル名参照は、同一スコープ内に1つまでしか作成できない
+        // let r1 = &mut s;
+        // let r2 = &mut s;
+
+        // println!("{}, {}", r1, r2);
+    }
+    {
+        // スライス型
+        let s = String::from("Hello Rust");
+        let word = first_word(&s); // sの最初のワードの長さを取得(5)
+
+        // s.clear(); // sの文字がクリアされ""となる。
+        // compile error
+
+        println!("{}", word); // s.clear()で文字列が""になっているにも関わらず、取得した時の値である5が出力される
+                               // 要は、文字と同期されていないのが問題
+        println!("{}", word);
+        // let hello = &s[0..5]; // &s[..5]と0から始まる場合は0を省略して記述することも可能
+        // let rust = &s[6..11];
+        // println!("{}, {}", hello, rust);
+
+    }
+}
+
+fn calculate_length(s1: &String) -> usize {
+    s1.len()
+}
+fn change_string(s1: &mut String, s2: &mut String) {
+    s1.push_str("!");
+    s2.push_str("!");
+}
+fn first_word(s: &String) -> &str {
+    // この関数がやっていることは文字を1つ1つ確認し、空白が見つかったら空白のインデックスを返す。
+    // 空白が見つからないなら文字列の長さを返す。
+
+    // Stringをバイトの配列に変更
+    let bytes = s.as_bytes();
+    
+    // iterメソッドでイテレータを生成
+    // iterメソッドはコレクション内の各要素を返す
+    // enumerateメソッドはインデックスと各要素の参照のペアをタプルとして返すメソッド
+    for (index, &item) in bytes.iter().enumerate() {
+        if item == b' ' {
+            return &s[..index];
+        }
+    }
+    &s[..]
 }
